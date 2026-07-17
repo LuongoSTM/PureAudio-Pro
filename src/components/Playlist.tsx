@@ -8,15 +8,9 @@ import {
   FolderSync, 
   CheckSquare, 
   Square, 
-  Cpu, 
-  HardDrive, 
-  Settings, 
   X, 
   Loader2, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Check, 
-  RefreshCw 
+  Check 
 } from 'lucide-react';
 import { Track } from '../types';
 
