@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #050505;
+  --color-brand-card: #0a0a0a;
+  --color-brand-sidebar: #080808;
+  --color-brand-accent: #00f5d4;
+  --color-brand-border: #1a1a1a;
+  --color-brand-muted: #737373;
+  --color-brand-dark-muted: #525252;
+  --color-brand-text: #e5e5e5;
+}
+
+body {
+  background-color: var(--color-brand-bg);
+  color: var(--color-brand-text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Custom scrollbar for playlist and other scrollable panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-brand-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-muted);
+}
+

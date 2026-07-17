@@ -1,0 +1,6 @@
+{
+  "name": "PureAudio Player & Equalizer",
+  "description": "Riproduttore musicale ad alta fedeltà per MP3 e FLAC con equalizzatore a 10 bande, amplificatore di volume intelligente (anti-clipping) e visualizzazione dello spettro in tempo reale.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
