@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { BarChart, Activity, Radio, Waves, ShieldAlert, Sparkles } from 'lucide-react';
+import { BarChart, Activity, Radio, Waves, ShieldAlert, Sparkles, Layers } from 'lucide-react';
 
 interface VisualizerProps {
   analyser: AnalyserNode | null;
@@ -9,7 +9,52 @@ interface VisualizerProps {
   onAuditionModeChange?: (mode: 'original' | 'remastered') => void;
 }
 
-type VisualizerMode = 'bars' | 'wave' | 'radial';
+type VisualizerMode = 'bars' | 'wave' | 'radial' | 'waterfall';
+
+// Thermodynamic Heat-Map Coloring logic for Waterfall display
+const getOriginalWaterfallColor = (intensity: number) => {
+  if (intensity < 0.25) {
+    const t = intensity / 0.25;
+    const r = Math.floor(6 + t * 100);
+    const g = Math.floor(6 + t * 10);
+    const b = Math.floor(9 + t * 15);
+    return `rgba(${r}, ${g}, ${b}, 0.85)`;
+  } else if (intensity < 0.65) {
+    const t = (intensity - 0.25) / 0.4;
+    const r = Math.floor(106 + t * 138);
+    const g = Math.floor(16 + t * 65);
+    const b = Math.floor(24 + t * 6);
+    return `rgba(${r}, ${g}, ${b}, 0.9)`;
+  } else {
+    const t = (intensity - 0.65) / 0.35;
+    const r = Math.floor(244 + t * 11);
+    const g = Math.floor(81 + t * 174);
+    const b = Math.floor(30 + t * 225);
+    return `rgba(${r}, ${g}, ${b}, 1)`;
+  }
+};
+
+const getRemasteredWaterfallColor = (intensity: number) => {
+  if (intensity < 0.25) {
+    const t = intensity / 0.25;
+    const r = Math.floor(6 - t * 6);
+    const g = Math.floor(6 + t * 50);
+    const b = Math.floor(9 + t * 100);
+    return `rgba(${r}, ${g}, ${b}, 0.85)`;
+  } else if (intensity < 0.65) {
+    const t = (intensity - 0.25) / 0.4;
+    const r = 0;
+    const g = Math.floor(56 + t * 199);
+    const b = Math.floor(109 + t * 103);
+    return `rgba(${r}, ${g}, ${b}, 0.9)`;
+  } else {
+    const t = (intensity - 0.65) / 0.35;
+    const r = Math.floor(t * 255);
+    const g = Math.floor(255);
+    const b = Math.floor(212 + t * 43);
+    return `rgba(${r}, ${g}, ${b}, 1)`;
+  }
+};
 
 export default function Visualizer({ 
   analyser, 
@@ -25,6 +70,16 @@ export default function Visualizer({
   const containerRemasterRef = useRef<HTMLDivElement | null>(null);
   
   const [mode, setMode] = useState<VisualizerMode>('bars');
+
+  // History buffers for the Waterfall spectrogram
+  const historyOrigRef = useRef<Uint8Array[]>([]);
+  const historyRemasterRef = useRef<Uint8Array[]>([]);
+
+  // Clear waterfall history when isPlaying changes or when switching modes
+  useEffect(() => {
+    historyOrigRef.current = [];
+    historyRemasterRef.current = [];
+  }, [isPlaying, mode]);
 
   // Resize function for both canvases
   useEffect(() => {
@@ -143,6 +198,33 @@ export default function Visualizer({
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
               }
+            } else if (mode === 'waterfall') {
+              originalAnalyser.getByteFrequencyData(dataArray);
+              const maxFreqIndex = Math.floor(bufferLength * 0.65);
+              const numSlices = 120;
+              const snapshot = new Uint8Array(numSlices);
+              for (let s = 0; s < numSlices; s++) {
+                const dataIndex = Math.floor((s / numSlices) * maxFreqIndex);
+                snapshot[s] = dataArray[dataIndex] || 0;
+              }
+              historyOrigRef.current.unshift(snapshot);
+              if (historyOrigRef.current.length > 75) {
+                historyOrigRef.current.pop();
+              }
+              const history = historyOrigRef.current;
+              const rowHeight = height / 75;
+              const sliceWidth = width / numSlices;
+              for (let y = 0; y < history.length; y++) {
+                const row = history[y];
+                const yPos = y * rowHeight;
+                for (let x = 0; x < numSlices; x++) {
+                  const intensity = row[x] / 255;
+                  if (intensity > 0.02) {
+                    ctx.fillStyle = getOriginalWaterfallColor(intensity);
+                    ctx.fillRect(x * sliceWidth, yPos, sliceWidth + 0.5, rowHeight + 0.5);
+                  }
+                }
+              }
             } else {
               // BARS
               originalAnalyser.getByteFrequencyData(dataArray);
@@ -247,6 +329,33 @@ export default function Visualizer({
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
               }
+            } else if (mode === 'waterfall') {
+              analyser.getByteFrequencyData(dataArray);
+              const maxFreqIndex = Math.floor(bufferLength * 0.65);
+              const numSlices = 120;
+              const snapshot = new Uint8Array(numSlices);
+              for (let s = 0; s < numSlices; s++) {
+                const dataIndex = Math.floor((s / numSlices) * maxFreqIndex);
+                snapshot[s] = dataArray[dataIndex] || 0;
+              }
+              historyRemasterRef.current.unshift(snapshot);
+              if (historyRemasterRef.current.length > 75) {
+                historyRemasterRef.current.pop();
+              }
+              const history = historyRemasterRef.current;
+              const rowHeight = height / 75;
+              const sliceWidth = width / numSlices;
+              for (let y = 0; y < history.length; y++) {
+                const row = history[y];
+                const yPos = y * rowHeight;
+                for (let x = 0; x < numSlices; x++) {
+                  const intensity = row[x] / 255;
+                  if (intensity > 0.02) {
+                    ctx.fillStyle = getRemasteredWaterfallColor(intensity);
+                    ctx.fillRect(x * sliceWidth, yPos, sliceWidth + 0.5, rowHeight + 0.5);
+                  }
+                }
+              }
             } else {
               // BARS
               analyser.getByteFrequencyData(dataArray);
@@ -314,6 +423,16 @@ export default function Visualizer({
             title="Spettro Orbitale"
           >
             <Radio className="w-3 h-3" />
+          </button>
+          <button
+            id="v_mode_waterfall"
+            onClick={() => setMode('waterfall')}
+            className={`p-1 rounded transition-all duration-200 ${
+              mode === 'waterfall' ? 'bg-[#00f5d4]/10 text-[#00f5d4] border border-[#00f5d4]/20 font-bold' : 'hover:text-white border border-transparent'
+            }`}
+            title="Cascata Spettrale (Waterfall)"
+          >
+            <Layers className="w-3 h-3" />
           </button>
         </div>
       </div>
