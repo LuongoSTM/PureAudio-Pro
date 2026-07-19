@@ -31,6 +31,7 @@ interface PlaylistProps {
     preampVal: number,
     surroundVal: number,
     compressorEnabled: boolean,
+    denoiseEnabled: boolean,
     onProgress: (progress: number) => void
   ) => Promise<{ blob: Blob; filename: string }>;
 }
@@ -196,6 +197,7 @@ export default function Playlist({
           aiData.preamp,
           aiData.surround,
           aiData.compressor,
+          false, // Denoise is usually a manual curative step, default to false in automated batches
           (prog) => {
             setBatchQueue(prev => prev.map((q, idx) => idx === i ? { ...q, progress: prog } : q));
           }
@@ -499,7 +501,7 @@ export default function Playlist({
       )}
 
       {/* 5. Tracks List (Shows checkboxes when in batch mode) */}
-      <div className="flex-1 overflow-y-auto max-h-[220px] lg:max-h-[260px] pr-1 flex flex-col gap-1.5">
+      <div className="flex-1 overflow-y-auto min-h-[160px] pr-1 flex flex-col gap-1.5">
         {filteredPlaylist.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-brand-muted text-center font-sans">
             <Music className="w-7 h-7 stroke-1 text-brand-dark-muted mb-1.5 animate-pulse" />
@@ -523,11 +525,17 @@ export default function Playlist({
               }
             };
 
+            const aiBorderClass = track.aiAnalysis
+              ? track.aiAnalysis.status === 'needs_remaster'
+                ? 'border-l-4 border-l-rose-500/80 bg-rose-950/5 hover:bg-rose-950/10'
+                : 'border-l-4 border-l-emerald-500/80 bg-emerald-950/5 hover:bg-emerald-950/10'
+              : '';
+
             return (
               <div
                 key={track.id}
                 id={`track_item_${track.id}`}
-                className={`group flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer ${
+                className={`group flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer ${aiBorderClass} ${
                   isActive && !isBatchMode
                     ? 'bg-brand-accent/5 border-brand-accent/30 text-brand-accent'
                     : isSelected && isBatchMode
@@ -578,12 +586,28 @@ export default function Playlist({
                     <span className="text-xs font-bold truncate group-hover:text-brand-accent transition-colors">
                       {track.name}
                     </span>
-                    <div className="flex items-center gap-1.5 text-[10px] text-brand-muted">
+                    <div className="flex items-center gap-1.5 text-[10px] text-brand-muted flex-wrap">
                       <span className="truncate">{track.artist}</span>
                       <span className="text-brand-dark-muted">•</span>
-                      <span className="shrink-0 uppercase bg-brand-bg text-[8px] font-mono font-bold px-1.5 py-0.5 rounded text-brand-muted border border-brand-border">
+                      <span className="shrink-0 uppercase bg-brand-bg text-[8px] font-mono font-bold px-1 py-0.5 rounded text-brand-muted border border-brand-border">
                         {track.format}
                       </span>
+                      {track.aiAnalysis && (
+                        <>
+                          <span className="text-brand-dark-muted">•</span>
+                          <span 
+                            className={`shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 ${
+                              track.aiAnalysis.status === 'needs_remaster'
+                                ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse'
+                                : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            }`}
+                            title={track.aiAnalysis.reason}
+                          >
+                            <span className={`w-1 h-1 rounded-full ${track.aiAnalysis.status === 'needs_remaster' ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+                            {track.aiAnalysis.status === 'needs_remaster' ? 'CONSIGLIATO REMASTER' : 'OTTIMO MIX'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

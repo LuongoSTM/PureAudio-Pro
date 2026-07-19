@@ -9,6 +9,18 @@ export interface Track {
   file: File;
   objectUrl: string;
   coverColor: string; // dynamically generated gradient colors
+  aiAnalysis?: {
+    status: 'needs_remaster' | 'good' | 'analyzing' | 'pending';
+    reason: string;
+    metrics?: {
+      dynamics: string;
+      frequencyBalance: string;
+      noiseFloor: string;
+      rms?: number;
+      peak?: number;
+      crestFactor?: number;
+    };
+  };
 }
 
 export interface EqBand {

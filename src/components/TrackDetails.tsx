@@ -1,5 +1,5 @@
 import React from 'react';
-import { Music, Disc, Info, AudioLines, Flame } from 'lucide-react';
+import { Music, Disc, Info, AudioLines, Flame, Sparkles } from 'lucide-react';
 import { Track, AudioStats } from '../types';
 
 interface TrackDetailsProps {
@@ -133,6 +133,30 @@ export default function TrackDetails({ track, isPlaying, stats, preamp }: TrackD
           </div>
 
         </div>
+
+        {/* AI mastering advice box */}
+        {track?.aiAnalysis && (
+          <div className={`p-2.5 rounded border text-[10px] flex gap-2.5 items-start transition-all ${
+            track.aiAnalysis.status === 'needs_remaster'
+              ? 'bg-rose-500/5 border-rose-500/20 text-rose-300'
+              : 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300'
+          }`}>
+            <Sparkles className={`w-4 h-4 shrink-0 mt-0.5 ${track.aiAnalysis.status === 'needs_remaster' ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`} />
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="font-bold uppercase tracking-wider text-[8px] font-mono">
+                Consulente di Mastering AI PureAudio™
+              </span>
+              <p className="leading-relaxed">
+                {track.aiAnalysis.reason}
+              </p>
+              <div className="flex flex-wrap gap-2 text-[8px] font-mono text-brand-muted mt-0.5 bg-black/30 p-1.5 rounded border border-white/5">
+                <span>RMS: <strong className="text-white font-bold">{track.aiAnalysis.metrics.rms.toFixed(1)} dB</strong></span>
+                <span>PICCO: <strong className="text-white font-bold">{track.aiAnalysis.metrics.peak.toFixed(1)} dB</strong></span>
+                <span>CREST FACTOR: <strong className="text-white font-bold">{track.aiAnalysis.metrics.crestFactor.toFixed(1)} dB</strong></span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Real-time Loudness VU-Meter (Adds massive pro aesthetic) */}
         <div className="flex flex-col gap-1.5 bg-[#050505] border border-brand-border rounded p-3">

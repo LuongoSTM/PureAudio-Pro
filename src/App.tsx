@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { Track } from './types';
+import { analyzeTrackAudio } from './lib/analyzer';
 import Header from './components/Header';
 import Visualizer from './components/Visualizer';
 import Equalizer from './components/Equalizer';
@@ -115,7 +116,10 @@ export default function App() {
     isEqBypassed,
     isExporting,
     exportProgress,
+    auditionMode,
+    isDenoiseEnabled,
     analyser,
+    originalAnalyser,
     setPreamp,
     setVolume,
     setSurround,
@@ -123,6 +127,8 @@ export default function App() {
     setBandGain,
     applyPreset,
     setIsEqBypassed,
+    setAuditionMode,
+    setIsDenoiseEnabled,
     exportProcessedAudio,
     renderTrackOffline,
     loadTrack,
@@ -137,6 +143,29 @@ export default function App() {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
+
+  // Prevent multiple redundant analysis calls
+  const analyzingIdsRef = React.useRef<Set<string>>(new Set());
+
+  // Automatically trigger AI analysis for playlist tracks
+  useEffect(() => {
+    const unanalyzed = playlist.filter((t) => !t.aiAnalysis && !analyzingIdsRef.current.has(t.id));
+    if (unanalyzed.length === 0) return;
+
+    unanalyzed.forEach(async (track) => {
+      analyzingIdsRef.current.add(track.id);
+      try {
+        const analysis = await analyzeTrackAudio(track);
+        setPlaylist((prev) =>
+          prev.map((t) => (t.id === track.id ? { ...t, aiAnalysis: analysis } : t))
+        );
+        // Sync active current track if its analysis was just completed
+        setCurrentTrack((prev) => (prev && prev.id === track.id ? { ...prev, aiAnalysis: analysis } : prev));
+      } catch (e) {
+        console.error("Errore nell'analisi automatica:", track.name, e);
+      }
+    });
+  }, [playlist]);
 
   // Handle uploading files (MP3 / FLAC)
   const addFilesToPlaylist = (files: FileList) => {
@@ -379,28 +408,39 @@ export default function App() {
       <Header />
 
       {/* 2. Main Content Grid */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 md:px-6 lg:py-8 flex flex-col gap-6">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-4 md:px-6 lg:py-4 flex flex-col gap-4 lg:h-[calc(100vh-120px)] overflow-hidden">
         
         {/* Top Info Banner - User Guide */}
-        <div className="bg-brand-card border border-brand-border rounded p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-brand-card border border-brand-border rounded p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shrink-0">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded bg-brand-accent/10 text-brand-accent mt-0.5 md:mt-0">
+            <div className="p-1.5 rounded bg-brand-accent/10 text-brand-accent mt-0.5 md:mt-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white tracking-widest uppercase">Algoritmo di Ottimizzazione PureAudio™</h4>
-              <p className="text-xs text-brand-muted leading-relaxed mt-1">
+              <h4 className="text-[10px] font-bold text-white tracking-widest uppercase">Algoritmo di Ottimizzazione PureAudio™</h4>
+              <p className="text-[11px] text-brand-muted leading-relaxed mt-0.5">
                 La traccia musicale ha un volume troppo basso? Usa lo slider <strong className="text-brand-accent font-bold">PRE-AMP BOOST</strong> per amplificare il segnale digitale. L'algoritmo <strong className="text-brand-accent font-bold">Anti-Distorsione Safe</strong> (Dynamics Limiter) livella automaticamente i picchi di frequenza prevenendo la saturazione, garantendo un'acustica eccellente ed impeccabile anche al massimo volume.
               </p>
             </div>
           </div>
         </div>
 
+        {/* Real-time Spectra Visualizer - Panoramic Layout (Both Spectrograms Side-by-Side Full-Width) */}
+        <div className="shrink-0">
+          <Visualizer 
+            analyser={analyser} 
+            originalAnalyser={originalAnalyser} 
+            isPlaying={isPlaying} 
+            auditionMode={auditionMode}
+            onAuditionModeChange={setAuditionMode}
+          />
+        </div>
+
         {/* Workspace Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 lg:h-0 lg:items-stretch overflow-hidden">
           
           {/* Left Column: Playlist & Library (3/12 width) */}
-          <div className="lg:col-span-3 flex flex-col gap-6">
+          <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
             <Playlist
               playlist={playlist}
               currentTrack={currentTrack}
@@ -413,11 +453,8 @@ export default function App() {
             />
           </div>
 
-          {/* Center Column: Visualizer, Controls, AI Remaster (5/12 width) */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            
-            {/* Real-time Spectra Visualizer */}
-            <Visualizer analyser={analyser} isPlaying={isPlaying} />
+          {/* Center Column: TrackDetails, Controls (5/12 width) */}
+          <div className="lg:col-span-5 flex flex-col gap-4 h-full overflow-y-auto pr-1">
 
             {/* Now Playing Info Specs */}
             <TrackDetails 
@@ -435,6 +472,7 @@ export default function App() {
               preamp={preamp}
               volume={volume}
               isCompressorEnabled={isCompressorEnabled}
+              isDenoiseEnabled={isDenoiseEnabled}
               surround={surround}
               onPlayPause={() => (isPlaying ? pause() : play())}
               onNext={handleNextTrack}
@@ -444,10 +482,25 @@ export default function App() {
               onPreampChange={setPreamp}
               onSurroundChange={setSurround}
               onToggleCompressor={toggleCompressor}
+              onToggleDenoise={setIsDenoiseEnabled}
               onToggleShuffle={() => setIsShuffle(!isShuffle)}
               onToggleRepeat={() => setIsRepeat(!isRepeat)}
               isShuffle={isShuffle}
               isRepeat={isRepeat}
+            />
+
+          </div>
+
+          {/* Right Column: Equalizer, AI Remaster & Exporter (4/12 width) */}
+          <div className="lg:col-span-4 flex flex-col gap-4 h-full overflow-y-auto pr-1">
+            
+            {/* 10-Band Graphic Equalizer */}
+            <Equalizer
+              bands={bands}
+              setBandGain={setBandGain}
+              applyPreset={applyPreset}
+              isEqBypassed={isEqBypassed}
+              setIsEqBypassed={setIsEqBypassed}
             />
 
             {/* AI Mastering & Personal Remastering Console */}
@@ -460,20 +513,6 @@ export default function App() {
                 setSurround(newSurround);
                 toggleCompressor(compressor);
               }}
-            />
-
-          </div>
-
-          {/* Right Column: Equalizer & Exporter (4/12 width) */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            
-            {/* 10-Band Graphic Equalizer */}
-            <Equalizer
-              bands={bands}
-              setBandGain={setBandGain}
-              applyPreset={applyPreset}
-              isEqBypassed={isEqBypassed}
-              setIsEqBypassed={setIsEqBypassed}
             />
 
             {/* Save & Export Audio Panel */}

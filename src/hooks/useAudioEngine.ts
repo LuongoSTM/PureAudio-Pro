@@ -17,6 +17,11 @@ export function useAudioEngine() {
   const wetGainRef = useRef<GainNode | null>(null);
   const mergerRef = useRef<ChannelMergerNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const originalAnalyserRef = useRef<AnalyserNode | null>(null);
+  const originalAuditionGainRef = useRef<GainNode | null>(null);
+  const remasteredAuditionGainRef = useRef<GainNode | null>(null);
+  const denoiseHighpassRef = useRef<BiquadFilterNode | null>(null);
+  const denoiseHissRef = useRef<BiquadFilterNode | null>(null);
 
   // Audio Engine State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -26,6 +31,8 @@ export function useAudioEngine() {
   const [volume, setVolume] = useState(1.0); // 0.0 to 1.0 (standard player volume)
   const [isCompressorEnabled, setIsCompressorEnabled] = useState(true);
   const [surround, setSurround] = useState(0); // 3D Surround (0 to 100)
+  const [auditionMode, setAuditionMode] = useState<'original' | 'remastered'>('remastered');
+  const [isDenoiseEnabled, setIsDenoiseEnabled] = useState(false);
   const [bands, setBands] = useState<EqBand[]>(
     EQ_FREQUENCIES.map((freq, i) => ({
       frequency: freq,
@@ -87,8 +94,44 @@ export function useAudioEngine() {
     const source = ctx.createMediaElementSource(audioRef.current);
     sourceNodeRef.current = source;
 
+    // Original, unmodified signal analyser
+    const originalAnalyser = ctx.createAnalyser();
+    originalAnalyser.fftSize = 512;
+    originalAnalyser.smoothingTimeConstant = 0.82;
+    originalAnalyserRef.current = originalAnalyser;
+    source.connect(originalAnalyser);
+
+    // Audition switch gains
+    const originalAuditionGain = ctx.createGain();
+    const remasteredAuditionGain = ctx.createGain();
+    originalAuditionGain.gain.value = auditionMode === 'original' ? 1.0 : 0.0;
+    remasteredAuditionGain.gain.value = auditionMode === 'remastered' ? 1.0 : 0.0;
+    originalAuditionGainRef.current = originalAuditionGain;
+    remasteredAuditionGainRef.current = remasteredAuditionGain;
+
+    // Connect raw source to original audition pathway
+    source.connect(originalAuditionGain);
+    originalAuditionGain.connect(ctx.destination);
+
+    // Denoise Nodes (Dynamic low-end hum & tape-hiss cleaning)
+    const denoiseHighpass = ctx.createBiquadFilter();
+    denoiseHighpass.type = 'highpass';
+    denoiseHighpass.frequency.value = isDenoiseEnabled ? 55 : 10;
+    denoiseHighpassRef.current = denoiseHighpass;
+
+    const denoiseHiss = ctx.createBiquadFilter();
+    denoiseHiss.type = 'peaking';
+    denoiseHiss.frequency.value = 8000;
+    denoiseHiss.Q.value = 0.5;
+    denoiseHiss.gain.value = isDenoiseEnabled ? -10 : 0;
+    denoiseHissRef.current = denoiseHiss;
+
+    // Connect source to denoise chain
+    source.connect(denoiseHighpass);
+    denoiseHighpass.connect(denoiseHiss);
+
     // 1. Set up Equalizer Filters (10 bands connected in series)
-    let lastNode: AudioNode = source;
+    let lastNode: AudioNode = denoiseHiss;
     const filters: BiquadFilterNode[] = [];
 
     EQ_FREQUENCIES.forEach((freq, index) => {
@@ -188,7 +231,10 @@ export function useAudioEngine() {
     analyserRef.current = analyser;
 
     lastNode.connect(analyser);
-    analyser.connect(ctx.destination);
+    
+    // Connect to remastered audition selector gain
+    analyser.connect(remasteredAuditionGain);
+    remasteredAuditionGain.connect(ctx.destination);
 
     // Set stats
     setAudioStats({
@@ -199,6 +245,58 @@ export function useAudioEngine() {
       rmsLevel: 0,
     });
   };
+
+  // Synchronize audition mode A/B
+  useEffect(() => {
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+    
+    const origGain = originalAuditionGainRef.current;
+    const remGain = remasteredAuditionGainRef.current;
+    
+    if (origGain && remGain) {
+      const time = ctx.currentTime;
+      if (auditionMode === 'original') {
+        origGain.gain.setValueAtTime(origGain.gain.value, time);
+        origGain.gain.linearRampToValueAtTime(1.0, time + 0.015);
+        
+        remGain.gain.setValueAtTime(remGain.gain.value, time);
+        remGain.gain.linearRampToValueAtTime(0.0, time + 0.015);
+      } else {
+        origGain.gain.setValueAtTime(origGain.gain.value, time);
+        origGain.gain.linearRampToValueAtTime(0.0, time + 0.015);
+        
+        remGain.gain.setValueAtTime(remGain.gain.value, time);
+        remGain.gain.linearRampToValueAtTime(1.0, time + 0.015);
+      }
+    }
+  }, [auditionMode]);
+
+  // Synchronize Denoise Filter State
+  useEffect(() => {
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+    
+    const hp = denoiseHighpassRef.current;
+    const hiss = denoiseHissRef.current;
+    
+    if (hp && hiss) {
+      const time = ctx.currentTime;
+      if (isDenoiseEnabled) {
+        hp.frequency.setValueAtTime(hp.frequency.value, time);
+        hp.frequency.exponentialRampToValueAtTime(55, time + 0.15);
+        
+        hiss.gain.setValueAtTime(hiss.gain.value, time);
+        hiss.gain.linearRampToValueAtTime(-10, time + 0.15);
+      } else {
+        hp.frequency.setValueAtTime(hp.frequency.value, time);
+        hp.frequency.exponentialRampToValueAtTime(10, time + 0.15);
+        
+        hiss.gain.setValueAtTime(hiss.gain.value, time);
+        hiss.gain.linearRampToValueAtTime(0, time + 0.15);
+      }
+    }
+  }, [isDenoiseEnabled]);
 
   // Synchronize EQ bands gain
   useEffect(() => {
@@ -375,6 +473,7 @@ export function useAudioEngine() {
     preampVal: number,
     surroundVal: number,
     compressorEnabled: boolean,
+    denoiseEnabled: boolean,
     onProgress: (progress: number) => void
   ): Promise<{ blob: Blob; filename: string }> => {
     if (!track || !track.file) {
@@ -402,6 +501,23 @@ export function useAudioEngine() {
     bufferSource.buffer = decodedBuffer;
 
     let lastNode: AudioNode = bufferSource;
+
+    // Apply Offline Denoising (rumble & hiss removal) if enabled
+    if (denoiseEnabled) {
+      const offlineHP = offlineCtx.createBiquadFilter();
+      offlineHP.type = 'highpass';
+      offlineHP.frequency.value = 55;
+
+      const offlineHiss = offlineCtx.createBiquadFilter();
+      offlineHiss.type = 'peaking';
+      offlineHiss.frequency.value = 8000;
+      offlineHiss.Q.value = 0.5;
+      offlineHiss.gain.value = -10;
+
+      lastNode.connect(offlineHP);
+      offlineHP.connect(offlineHiss);
+      lastNode = offlineHiss;
+    }
 
     // Connect 10 EQ Filters in Offline Graph
     EQ_FREQUENCIES.forEach((freq, index) => {
@@ -492,7 +608,7 @@ export function useAudioEngine() {
       blob = encodeFlac(renderedBuffer);
       filename += " [PureAudio Remastered HD].flac";
     } else if (format === 'mp3') {
-      blob = encodeMp3(renderedBuffer);
+      blob = await encodeMp3Async(renderedBuffer);
       filename += " [PureAudio Remastered High].mp3";
     } else {
       blob = encodeWav16(renderedBuffer);
@@ -518,6 +634,7 @@ export function useAudioEngine() {
         preamp,
         surround,
         isCompressorEnabled,
+        isDenoiseEnabled,
         (p) => setExportProgress(p)
       );
 
@@ -552,7 +669,10 @@ export function useAudioEngine() {
     isEqBypassed,
     isExporting,
     exportProgress,
+    auditionMode,
+    isDenoiseEnabled,
     analyser: analyserRef.current,
+    originalAnalyser: originalAnalyserRef.current,
     setPreamp,
     setVolume: changeVolume,
     setSurround,
@@ -560,6 +680,8 @@ export function useAudioEngine() {
     setBandGain,
     applyPreset,
     setIsEqBypassed,
+    setAuditionMode,
+    setIsDenoiseEnabled,
     exportProcessedAudio,
     renderTrackOffline,
     loadTrack,
@@ -671,4 +793,68 @@ function encodeFlac(audioBuffer: AudioBuffer): Blob {
 function encodeMp3(audioBuffer: AudioBuffer): Blob {
   const wavBlob = encodeWav16(audioBuffer);
   return new Blob([wavBlob], { type: 'audio/mp3' });
+}
+
+// True asynchronous MP3 encoder using lamejs
+async function encodeMp3Async(audioBuffer: AudioBuffer): Promise<Blob> {
+  try {
+    const lamejs = (window as any).lamejs || await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';
+      script.onload = () => {
+        if ((window as any).lamejs) resolve((window as any).lamejs);
+        else reject(new Error('lamejs window object missing'));
+      };
+      script.onerror = () => reject(new Error('Failed to load lamejs script'));
+      document.head.appendChild(script);
+    });
+
+    const channels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, 320); // 320kbps High Quality
+    const mp3Data: Uint8Array[] = [];
+
+    const left = audioBuffer.getChannelData(0);
+    const right = channels === 2 ? audioBuffer.getChannelData(1) : null;
+
+    const sampleBlockSize = 1152;
+    const leftInt16 = new Int16Array(left.length);
+    for (let i = 0; i < left.length; i++) {
+      const s = Math.max(-1, Math.min(1, left[i]));
+      leftInt16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    let rightInt16: Int16Array | null = null;
+    if (right) {
+      rightInt16 = new Int16Array(right.length);
+      for (let i = 0; i < right.length; i++) {
+        const s = Math.max(-1, Math.min(1, right[i]));
+        rightInt16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+    }
+
+    for (let i = 0; i < left.length; i += sampleBlockSize) {
+      const leftChunk = leftInt16.subarray(i, i + sampleBlockSize);
+      let mp3buf;
+      if (rightInt16) {
+        const rightChunk = rightInt16.subarray(i, i + sampleBlockSize);
+        mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
+      } else {
+        mp3buf = mp3encoder.encodeBuffer(leftChunk);
+      }
+      if (mp3buf && mp3buf.length > 0) {
+        mp3Data.push(new Uint8Array(mp3buf));
+      }
+    }
+
+    const mp3buf = mp3encoder.flush();
+    if (mp3buf && mp3buf.length > 0) {
+      mp3Data.push(new Uint8Array(mp3buf));
+    }
+
+    return new Blob(mp3Data, { type: 'audio/mp3' });
+  } catch (err) {
+    console.error('Error in encodeMp3Async, falling back to WAV payload container:', err);
+    return encodeWav16(audioBuffer);
+  }
 }

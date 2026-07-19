@@ -11,6 +11,7 @@ interface AudioControlsProps {
   preamp: number;
   volume: number;
   isCompressorEnabled: boolean;
+  isDenoiseEnabled: boolean;
   surround: number;
   onPlayPause: () => void;
   onNext: () => void;
@@ -20,6 +21,7 @@ interface AudioControlsProps {
   onPreampChange: (gain: number) => void;
   onSurroundChange: (width: number) => void;
   onToggleCompressor: (enabled: boolean) => void;
+  onToggleDenoise: (enabled: boolean) => void;
   onToggleShuffle: () => void;
   onToggleRepeat: () => void;
   isShuffle: boolean;
@@ -41,6 +43,7 @@ export default function AudioControls({
   preamp,
   volume,
   isCompressorEnabled,
+  isDenoiseEnabled,
   surround,
   onPlayPause,
   onNext,
@@ -50,6 +53,7 @@ export default function AudioControls({
   onPreampChange,
   onSurroundChange,
   onToggleCompressor,
+  onToggleDenoise,
   onToggleShuffle,
   onToggleRepeat,
   isShuffle,
@@ -229,7 +233,7 @@ export default function AudioControls({
           )}
         </div>
 
-        {/* High-Fidelity DSP Settings: Compressor & Surround */}
+        {/* High-Fidelity DSP Settings: Compressor, Denoise & Surround */}
         <div className="flex flex-col gap-3">
           
           {/* Anti-distortion Safeguard Compressor */}
@@ -254,6 +258,33 @@ export default function AudioControls({
               <span
                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-brand-bg shadow ring-0 transition duration-200 ease-in-out ${
                   isCompressorEnabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Denoise (Background Noise Removal) Filter */}
+          <div className="bg-brand-bg rounded p-3 border border-brand-border flex items-center justify-between">
+            <div className="flex items-start gap-2.5">
+              <div className={`p-1.5 rounded ${isDenoiseEnabled ? 'bg-[#f4511e]/10 text-[#f4511e]' : 'bg-[#151515] text-brand-dark-muted'}`}>
+                <VolumeX className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-white uppercase tracking-wide">Elimina Rumori</span>
+                <span className="text-[10px] text-brand-muted">Filtra fruscii, disturbi e ronzii di fondo</span>
+              </div>
+            </div>
+            
+            <button
+              id="btn_toggle_denoise"
+              onClick={() => onToggleDenoise(!isDenoiseEnabled)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isDenoiseEnabled ? 'bg-[#f4511e]' : 'bg-[#222]'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-brand-bg shadow ring-0 transition duration-200 ease-in-out ${
+                  isDenoiseEnabled ? 'translate-x-4' : 'translate-x-0'
                 }`}
               />
             </button>
