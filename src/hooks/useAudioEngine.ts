@@ -22,6 +22,7 @@ export function useAudioEngine() {
   const remasteredAuditionGainRef = useRef<GainNode | null>(null);
   const denoiseHighpassRef = useRef<BiquadFilterNode | null>(null);
   const denoiseHissRef = useRef<BiquadFilterNode | null>(null);
+  const volumeBoostGainRef = useRef<GainNode | null>(null);
 
   // Audio Engine State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -33,6 +34,7 @@ export function useAudioEngine() {
   const [surround, setSurround] = useState(0); // 3D Surround (0 to 100)
   const [auditionMode, setAuditionMode] = useState<'original' | 'remastered'>('remastered');
   const [isDenoiseEnabled, setIsDenoiseEnabled] = useState(false);
+  const [isVolumeBoostEnabled, setIsVolumeBoostEnabled] = useState(false);
   const [bands, setBands] = useState<EqBand[]>(
     EQ_FREQUENCIES.map((freq, i) => ({
       frequency: freq,
@@ -204,6 +206,12 @@ export function useAudioEngine() {
     lastNode.connect(preampGain);
     lastNode = preampGain;
 
+    const volumeBoostGain = ctx.createGain();
+    volumeBoostGain.gain.value = isVolumeBoostEnabled ? 2.0 : 1.0;
+    volumeBoostGainRef.current = volumeBoostGain;
+    lastNode.connect(volumeBoostGain);
+    lastNode = volumeBoostGain;
+
     // 4. Set up Dynamics Compressor (Anti-Clipping / Limiter)
     const compressor = ctx.createDynamicsCompressor();
     compressor.threshold.value = -1.5; // Trigger early enough to avoid clipping
@@ -320,6 +328,19 @@ export function useAudioEngine() {
       }
     }
   }, [preamp]);
+
+  // Synchronize volume boost gain
+  useEffect(() => {
+    if (volumeBoostGainRef.current) {
+      const ctx = audioContextRef.current;
+      const targetGain = isVolumeBoostEnabled ? 2.0 : 1.0;
+      if (ctx) {
+        volumeBoostGainRef.current.gain.linearRampToValueAtTime(targetGain, ctx.currentTime + 0.1);
+      } else {
+        volumeBoostGainRef.current.gain.value = targetGain;
+      }
+    }
+  }, [isVolumeBoostEnabled]);
 
   // Synchronize spatial surround
   useEffect(() => {
@@ -474,7 +495,8 @@ export function useAudioEngine() {
     surroundVal: number,
     compressorEnabled: boolean,
     denoiseEnabled: boolean,
-    onProgress: (progress: number) => void
+    onProgress: (progress: number) => void,
+    volumeBoostEnabled: boolean = false
   ): Promise<{ blob: Blob; filename: string }> => {
     if (!track || !track.file) {
       throw new Error("File audio o traccia non valida.");
@@ -573,6 +595,12 @@ export function useAudioEngine() {
     lastNode.connect(preampGain);
     lastNode = preampGain;
 
+    // Connect Volume Boost
+    const offlineVolumeBoostGain = offlineCtx.createGain();
+    offlineVolumeBoostGain.gain.value = volumeBoostEnabled ? 2.0 : 1.0;
+    lastNode.connect(offlineVolumeBoostGain);
+    lastNode = offlineVolumeBoostGain;
+
     // Connect Dynamics Limiter
     const compressor = offlineCtx.createDynamicsCompressor();
     compressor.threshold.value = -1.5;
@@ -635,7 +663,8 @@ export function useAudioEngine() {
         surround,
         isCompressorEnabled,
         isDenoiseEnabled,
-        (p) => setExportProgress(p)
+        (p) => setExportProgress(p),
+        isVolumeBoostEnabled
       );
 
       // Trigger browser download
@@ -671,6 +700,7 @@ export function useAudioEngine() {
     exportProgress,
     auditionMode,
     isDenoiseEnabled,
+    isVolumeBoostEnabled,
     analyser: analyserRef.current,
     originalAnalyser: originalAnalyserRef.current,
     setPreamp,
@@ -682,6 +712,7 @@ export function useAudioEngine() {
     setIsEqBypassed,
     setAuditionMode,
     setIsDenoiseEnabled,
+    setIsVolumeBoostEnabled,
     exportProcessedAudio,
     renderTrackOffline,
     loadTrack,

@@ -118,6 +118,7 @@ export default function App() {
     exportProgress,
     auditionMode,
     isDenoiseEnabled,
+    isVolumeBoostEnabled,
     analyser,
     originalAnalyser,
     setPreamp,
@@ -129,6 +130,7 @@ export default function App() {
     setIsEqBypassed,
     setAuditionMode,
     setIsDenoiseEnabled,
+    setIsVolumeBoostEnabled,
     exportProcessedAudio,
     renderTrackOffline,
     loadTrack,
@@ -464,7 +466,7 @@ export default function App() {
               preamp={preamp}
             />
 
-            {/* Playback Progress, Volume Boost & 3D Surround */}
+             {/* Playback Progress, Volume Boost & 3D Surround */}
             <AudioControls
               isPlaying={isPlaying}
               currentTime={currentTime}
@@ -473,6 +475,7 @@ export default function App() {
               volume={volume}
               isCompressorEnabled={isCompressorEnabled}
               isDenoiseEnabled={isDenoiseEnabled}
+              isVolumeBoostEnabled={isVolumeBoostEnabled}
               surround={surround}
               onPlayPause={() => (isPlaying ? pause() : play())}
               onNext={handleNextTrack}
@@ -483,6 +486,7 @@ export default function App() {
               onSurroundChange={setSurround}
               onToggleCompressor={toggleCompressor}
               onToggleDenoise={setIsDenoiseEnabled}
+              onToggleVolumeBoost={setIsVolumeBoostEnabled}
               onToggleShuffle={() => setIsShuffle(!isShuffle)}
               onToggleRepeat={() => setIsRepeat(!isRepeat)}
               isShuffle={isShuffle}

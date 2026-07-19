@@ -12,6 +12,7 @@ interface AudioControlsProps {
   volume: number;
   isCompressorEnabled: boolean;
   isDenoiseEnabled: boolean;
+  isVolumeBoostEnabled: boolean;
   surround: number;
   onPlayPause: () => void;
   onNext: () => void;
@@ -22,6 +23,7 @@ interface AudioControlsProps {
   onSurroundChange: (width: number) => void;
   onToggleCompressor: (enabled: boolean) => void;
   onToggleDenoise: (enabled: boolean) => void;
+  onToggleVolumeBoost: (enabled: boolean) => void;
   onToggleShuffle: () => void;
   onToggleRepeat: () => void;
   isShuffle: boolean;
@@ -44,6 +46,7 @@ export default function AudioControls({
   volume,
   isCompressorEnabled,
   isDenoiseEnabled,
+  isVolumeBoostEnabled,
   surround,
   onPlayPause,
   onNext,
@@ -54,6 +57,7 @@ export default function AudioControls({
   onSurroundChange,
   onToggleCompressor,
   onToggleDenoise,
+  onToggleVolumeBoost,
   onToggleShuffle,
   onToggleRepeat,
   isShuffle,
@@ -285,6 +289,33 @@ export default function AudioControls({
               <span
                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-brand-bg shadow ring-0 transition duration-200 ease-in-out ${
                   isDenoiseEnabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Super Volume Boost (+6dB) Toggle */}
+          <div className="bg-brand-bg rounded p-3 border border-brand-border flex items-center justify-between">
+            <div className="flex items-start gap-2.5">
+              <div className={`p-1.5 rounded ${isVolumeBoostEnabled ? 'bg-amber-500/10 text-amber-400' : 'bg-[#151515] text-brand-dark-muted'}`}>
+                <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-white uppercase tracking-wide">Volume Boost (+6dB)</span>
+                <span className="text-[10px] text-brand-muted font-mono text-amber-400/90">Massimizza pressione sonora (x2.0)</span>
+              </div>
+            </div>
+            
+            <button
+              id="btn_toggle_volume_boost"
+              onClick={() => onToggleVolumeBoost(!isVolumeBoostEnabled)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isVolumeBoostEnabled ? 'bg-amber-500' : 'bg-[#222]'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-brand-bg shadow ring-0 transition duration-200 ease-in-out ${
+                  isVolumeBoostEnabled ? 'translate-x-4' : 'translate-x-0'
                 }`}
               />
             </button>
