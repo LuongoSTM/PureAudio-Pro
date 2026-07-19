@@ -376,31 +376,9 @@ export default function App() {
     return () => audio.removeEventListener('ended', handleEnded);
   }, [playlist, currentTrack, isShuffle, isRepeat]);
 
-  // Load initial synthesized track on first load so user has immediate feedback!
+  // No automatic demo track pre-loaded at startup to respect user intent (empty library on start)
   useEffect(() => {
-    const initSynth = () => {
-      const synthFile = generateOfflineSynthTrack();
-      const synthUrl = URL.createObjectURL(synthFile);
-      const initialTrack: Track = {
-        id: 'synth_demo',
-        name: 'PureAudio DSP Synth Sweep',
-        artist: 'Sintetizzatore Interno',
-        album: 'Sintesi Analogica Virtuale',
-        duration: 20,
-        size: `${(synthFile.size / (1024 * 1024)).toFixed(1)} MB`,
-        format: 'other',
-        file: synthFile,
-        objectUrl: synthUrl,
-        coverColor: 'linear-gradient(135deg, #00f5d4 0%, #006b5d 100%)',
-      };
-      setPlaylist([initialTrack]);
-      setCurrentTrack(initialTrack);
-      loadTrack(initialTrack);
-    };
-
-    // Initialize with local synth track after short timeout
-    const t = setTimeout(initSynth, 500);
-    return () => clearTimeout(t);
+    // We start with an empty playlist. The user can load files or demo tracks manually.
   }, []);
 
   return (
@@ -410,7 +388,7 @@ export default function App() {
       <Header />
 
       {/* 2. Main Content Grid */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-4 md:px-6 lg:py-4 flex flex-col gap-4 lg:h-[calc(100vh-120px)] overflow-hidden">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 py-4 md:px-6 lg:py-4 flex flex-col gap-4 lg:h-[calc(100vh-120px)] overflow-hidden">
         
         {/* Top Info Banner - User Guide */}
         <div className="bg-brand-card border border-brand-border rounded p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shrink-0">
@@ -438,94 +416,104 @@ export default function App() {
           />
         </div>
 
-        {/* Workspace Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 lg:h-0 lg:items-stretch overflow-hidden">
+        {/* Workspace Layout: 2 Columns */}
+        <div id="workspace_grid" className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 lg:h-0 lg:items-stretch overflow-hidden">
           
-          {/* Left Column: Playlist & Library (3/12 width) */}
-          <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
-            <Playlist
-              playlist={playlist}
-              currentTrack={currentTrack}
-              onTrackSelect={handleTrackSelect}
-              onRemoveTrack={removeTrack}
-              onAddFiles={addFilesToPlaylist}
-              onLoadDemoTracks={loadDemoTracks}
-              isLoadingDemo={isLoadingDemo}
-              renderTrackOffline={renderTrackOffline}
-            />
-          </div>
-
-          {/* Center Column: TrackDetails, Controls (5/12 width) */}
-          <div className="lg:col-span-5 flex flex-col gap-4 h-full overflow-y-auto pr-1">
-
-            {/* Now Playing Info Specs */}
-            <TrackDetails 
-              track={currentTrack} 
-              isPlaying={isPlaying} 
-              stats={audioStats}
-              preamp={preamp}
-            />
-
-             {/* Playback Progress, Volume Boost & 3D Surround */}
-            <AudioControls
-              isPlaying={isPlaying}
-              currentTime={currentTime}
-              duration={duration}
-              preamp={preamp}
-              volume={volume}
-              isCompressorEnabled={isCompressorEnabled}
-              isDenoiseEnabled={isDenoiseEnabled}
-              isVolumeBoostEnabled={isVolumeBoostEnabled}
-              surround={surround}
-              onPlayPause={() => (isPlaying ? pause() : play())}
-              onNext={handleNextTrack}
-              onPrev={handlePrevTrack}
-              onSeek={seek}
-              onVolumeChange={setVolume}
-              onPreampChange={setPreamp}
-              onSurroundChange={setSurround}
-              onToggleCompressor={toggleCompressor}
-              onToggleDenoise={setIsDenoiseEnabled}
-              onToggleVolumeBoost={setIsVolumeBoostEnabled}
-              onToggleShuffle={() => setIsShuffle(!isShuffle)}
-              onToggleRepeat={() => setIsRepeat(!isRepeat)}
-              isShuffle={isShuffle}
-              isRepeat={isRepeat}
-            />
-
-          </div>
-
-          {/* Right Column: Equalizer, AI Remaster & Exporter (4/12 width) */}
-          <div className="lg:col-span-4 flex flex-col gap-4 h-full overflow-y-auto pr-1">
+          {/* Left Column: Playlist Library & AI Remaster/Export (5/12 width) */}
+          <div id="col_left_library" className="lg:col-span-5 flex flex-col gap-4 h-full overflow-hidden">
             
-            {/* 10-Band Graphic Equalizer */}
-            <Equalizer
-              bands={bands}
-              setBandGain={setBandGain}
-              applyPreset={applyPreset}
-              isEqBypassed={isEqBypassed}
-              setIsEqBypassed={setIsEqBypassed}
-            />
+            {/* Library / Playlist (Upper segment) */}
+            <div className="flex-[5] min-h-0 flex flex-col overflow-hidden bg-brand-card/30 border border-brand-border/60 rounded-xl">
+              <Playlist
+                playlist={playlist}
+                currentTrack={currentTrack}
+                onTrackSelect={handleTrackSelect}
+                onRemoveTrack={removeTrack}
+                onAddFiles={addFilesToPlaylist}
+                onLoadDemoTracks={loadDemoTracks}
+                isLoadingDemo={isLoadingDemo}
+                renderTrackOffline={renderTrackOffline}
+              />
+            </div>
 
-            {/* AI Mastering & Personal Remastering Console */}
-            <AiRemasterConsole
-              currentTrack={currentTrack}
-              bands={bands}
-              onApplyRemaster={(gains, newPreamp, newSurround, compressor) => {
-                applyPreset(gains);
-                setPreamp(newPreamp);
-                setSurround(newSurround);
-                toggleCompressor(compressor);
-              }}
-            />
+            {/* AI Mastering Tools & Exporter (Lower segment) */}
+            <div className="flex-[4] min-h-0 flex flex-col gap-4 overflow-y-auto pr-1">
+              <AiRemasterConsole
+                currentTrack={currentTrack}
+                bands={bands}
+                onApplyRemaster={(gains, newPreamp, newSurround, compressor) => {
+                  applyPreset(gains);
+                  setPreamp(newPreamp);
+                  setSurround(newSurround);
+                  toggleCompressor(compressor);
+                }}
+              />
 
-            {/* Save & Export Audio Panel */}
-            <AudioExporter
-              currentTrack={currentTrack}
-              isExporting={isExporting}
-              exportProgress={exportProgress}
-              onExport={exportProcessedAudio}
-            />
+              <AudioExporter
+                currentTrack={currentTrack}
+                isExporting={isExporting}
+                exportProgress={exportProgress}
+                onExport={exportProcessedAudio}
+              />
+            </div>
+
+          </div>
+
+          {/* Right Column: Audio Playback & Parametric Equalizer (7/12 width) */}
+          <div id="col_right_dsp" className="lg:col-span-7 flex flex-col gap-4 h-full overflow-hidden">
+            
+            {/* Now Playing Header & Deck */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 shrink-0">
+              {/* Compact Album & Specs */}
+              <div className="md:col-span-5 flex flex-col">
+                <TrackDetails 
+                  track={currentTrack} 
+                  isPlaying={isPlaying} 
+                  stats={audioStats}
+                  preamp={preamp}
+                />
+              </div>
+
+              {/* Master Volume, Panning & Enhancers */}
+              <div className="md:col-span-7 flex flex-col">
+                <AudioControls
+                  isPlaying={isPlaying}
+                  currentTime={currentTime}
+                  duration={duration}
+                  preamp={preamp}
+                  volume={volume}
+                  isCompressorEnabled={isCompressorEnabled}
+                  isDenoiseEnabled={isDenoiseEnabled}
+                  isVolumeBoostEnabled={isVolumeBoostEnabled}
+                  surround={surround}
+                  onPlayPause={() => (isPlaying ? pause() : play())}
+                  onNext={handleNextTrack}
+                  onPrev={handlePrevTrack}
+                  onSeek={seek}
+                  onVolumeChange={setVolume}
+                  onPreampChange={setPreamp}
+                  onSurroundChange={setSurround}
+                  onToggleCompressor={toggleCompressor}
+                  onToggleDenoise={setIsDenoiseEnabled}
+                  onToggleVolumeBoost={setIsVolumeBoostEnabled}
+                  onToggleShuffle={() => setIsShuffle(!isShuffle)}
+                  onToggleRepeat={() => setIsRepeat(!isRepeat)}
+                  isShuffle={isShuffle}
+                  isRepeat={isRepeat}
+                />
+              </div>
+            </div>
+
+            {/* 10-Band Graphic Equalizer Panel */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <Equalizer
+                bands={bands}
+                setBandGain={setBandGain}
+                applyPreset={applyPreset}
+                isEqBypassed={isEqBypassed}
+                setIsEqBypassed={setIsEqBypassed}
+              />
+            </div>
 
           </div>
 
@@ -535,7 +523,7 @@ export default function App() {
 
       {/* 3. Footer */}
       <footer className="border-t border-brand-border bg-brand-card py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] font-mono text-brand-muted">
+        <div className="max-w-[1440px] mx-auto px-4 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] font-mono text-brand-muted">
           <span>PureAudio Equalizer & Player v1.5.0 — High-Resolution DSP Engine</span>
           <div className="flex items-center gap-1.5">
             <Waves className="w-3.5 h-3.5 text-brand-accent" />

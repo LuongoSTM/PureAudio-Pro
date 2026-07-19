@@ -236,7 +236,7 @@ export default function Playlist({
   const activeItem = batchQueue.find(q => q.status === 'ai_tuning' || q.status === 'rendering');
 
   return (
-    <div id="playlist_panel" className="bg-brand-card rounded border border-brand-border p-5 md:p-6 flex flex-col gap-4 h-full relative overflow-hidden">
+    <div id="playlist_panel" className="bg-brand-card/45 backdrop-blur-md rounded-xl border border-brand-border/80 p-5 flex flex-col gap-4 h-full relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
       
       {/* Background neon glow for Batch processing */}
       {isBatchMode && (

@@ -84,7 +84,7 @@ export default function AudioControls({
   const preampDb = 20 * Math.log10(preamp);
 
   return (
-    <div id="audio_controls_panel" className="bg-brand-card rounded border border-brand-border p-5 md:p-6 flex flex-col gap-5">
+    <div id="audio_controls_panel" className="bg-brand-card/40 backdrop-blur-md rounded-xl border border-brand-border/80 p-5 flex flex-col gap-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)] h-full">
       
       {/* 1. Playback Progress Slider */}
       <div className="flex flex-col gap-2">

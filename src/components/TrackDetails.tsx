@@ -24,7 +24,7 @@ export default function TrackDetails({ track, isPlaying, stats, preamp }: TrackD
   const fidelityScore = calculateFidelityScore();
 
   return (
-    <div id="track_details_panel" className="bg-brand-card rounded border border-brand-border p-5 md:p-6 flex flex-col md:flex-row gap-6 items-center">
+    <div id="track_details_panel" className="bg-brand-card/40 backdrop-blur-md rounded-xl border border-brand-border/80 p-5 flex flex-col sm:flex-row xl:flex-col gap-4 items-center justify-center h-full shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
       
       {/* Dynamic Cover Artwork Display (Vinyl disc / Gradient card) */}
       <div className="relative shrink-0 select-none group">
@@ -32,7 +32,7 @@ export default function TrackDetails({ track, isPlaying, stats, preamp }: TrackD
           <div className="relative">
             {/* Spinning Vinyl Disc behind the cover */}
             <div
-              className={`absolute top-0 left-0 w-32 h-32 rounded-full bg-[#050505] border border-brand-border flex items-center justify-center shadow-xl transition-all duration-500 ${
+              className={`absolute top-0 left-0 w-28 h-28 rounded-full bg-[#050505] border border-brand-border flex items-center justify-center shadow-xl transition-all duration-500 ${
                 isPlaying ? 'animate-[spin_4s_linear_infinite] translate-x-4' : 'translate-x-0'
               }`}
               style={{
@@ -40,90 +40,90 @@ export default function TrackDetails({ track, isPlaying, stats, preamp }: TrackD
               }}
             >
               {/* Vinyl center pinhole hole */}
-              <div className="w-10 h-10 rounded-full bg-[#050505] border-4 border-brand-border flex items-center justify-center">
-                <div className="w-2.5 h-2.5 rounded-full bg-brand-accent/55" />
+              <div className="w-8 h-8 rounded-full bg-[#050505] border-4 border-brand-border flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-brand-accent/55" />
               </div>
             </div>
-
+ 
             {/* Main Cover Album Square */}
             <div
-              className={`relative w-32 h-32 rounded flex flex-col justify-between p-3 text-white font-semibold shadow-2xl transition-all duration-300 ${
+              className={`relative w-28 h-28 rounded-lg flex flex-col justify-between p-2.5 text-white font-semibold shadow-2xl transition-all duration-300 ${
                 isPlaying ? 'scale-105' : ''
               }`}
               style={{ background: track.coverColor }}
             >
-              <Music className="w-4 h-4 opacity-70" />
+              <Music className="w-3.5 h-3.5 opacity-70" />
               <div className="flex flex-col min-w-0">
-                <span className="text-[9px] uppercase tracking-widest font-mono opacity-60">STEREO OUTPUT</span>
-                <span className="text-[10px] truncate opacity-90 font-medium">{track.album}</span>
+                <span className="text-[8px] uppercase tracking-widest font-mono opacity-60">STEREO OUTPUT</span>
+                <span className="text-[9px] truncate opacity-90 font-medium">{track.album}</span>
               </div>
             </div>
           </div>
         ) : (
           /* Empty / Idle State Artwork placeholder */
-          <div className="w-32 h-32 rounded bg-[#050505] border border-brand-border flex flex-col items-center justify-center text-brand-muted shadow-inner">
-            <Disc className="w-10 h-10 stroke-[1.2] mb-1.5 text-brand-accent animate-pulse" />
-            <span className="text-[9px] font-mono tracking-widest uppercase text-brand-muted">STBY AUDIO</span>
+          <div className="w-28 h-28 rounded-lg bg-[#020202]/50 border border-brand-border/80 flex flex-col items-center justify-center text-brand-muted shadow-inner">
+            <Disc className="w-9 h-9 stroke-[1.2] mb-1 text-brand-accent animate-pulse" />
+            <span className="text-[8px] font-mono tracking-widest uppercase text-brand-muted">STBY AUDIO</span>
           </div>
         )}
       </div>
-
+ 
       {/* Meta Information, Technical Specs & Realtime Meters */}
-      <div className="flex-1 w-full flex flex-col justify-between self-stretch gap-4">
+      <div className="flex-1 w-full flex flex-col justify-between self-stretch gap-3">
         
         {/* Track Title / Artist */}
-        <div className="flex flex-col text-center md:text-left min-w-0">
+        <div className="flex flex-col text-center sm:text-left xl:text-center min-w-0">
           {track ? (
             <>
-              <h2 className="text-base md:text-lg font-bold text-white truncate tracking-wider">
+              <h2 className="text-sm md:text-base font-extrabold text-white truncate tracking-wider">
                 {track.name}
               </h2>
-              <p className="text-xs text-brand-accent mt-0.5 font-medium truncate font-mono">
-                {track.artist.toUpperCase()}
+              <p className="text-[11px] text-brand-accent mt-0.5 font-bold truncate font-mono uppercase tracking-wide">
+                {track.artist}
               </p>
             </>
           ) : (
             <>
-              <h2 className="text-base md:text-lg font-bold text-brand-muted tracking-wider">
-                Nessun brano in riproduzione
+              <h2 className="text-sm md:text-base font-bold text-brand-muted tracking-wider">
+                In Standby...
               </h2>
-              <p className="text-xs text-brand-dark-muted mt-0.5">
-                Seleziona o trascina un file audio per avviare il motore DSP
+              <p className="text-[10px] text-brand-dark-muted mt-0.5 leading-normal">
+                Carica o seleziona un brano
               </p>
             </>
           )}
         </div>
-
+ 
         {/* Technical Specification Badges & Realtime Audio Analytics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#050505] rounded p-3 border border-brand-border font-mono text-[10px]">
+        <div className="grid grid-cols-2 gap-2 bg-[#020202]/60 rounded-lg p-2.5 border border-brand-border/60 font-mono text-[9px]">
           
           {/* Format Detail */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-brand-dark-muted uppercase text-[8px] tracking-wider font-semibold">Formato</span>
+            <span className="text-brand-dark-muted uppercase text-[7px] tracking-wider font-semibold">Formato</span>
             <span className="text-white font-bold uppercase truncate">{track?.format || '---'}</span>
           </div>
-
+ 
           {/* Sample Rate */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-brand-dark-muted uppercase text-[8px] tracking-wider font-semibold">Campionamento</span>
+            <span className="text-brand-dark-muted uppercase text-[7px] tracking-wider font-semibold">Frequenza</span>
             <span className="text-white font-bold">
               {track ? `${(stats.sampleRate / 1000).toFixed(1)} kHz` : '---'}
             </span>
           </div>
-
+ 
           {/* Processing Resolution */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-brand-dark-muted uppercase text-[8px] tracking-wider font-semibold">Precisione</span>
+            <span className="text-brand-dark-muted uppercase text-[7px] tracking-wider font-semibold">Risoluzione</span>
             <span className="text-white font-bold truncate">32-bit Float</span>
           </div>
-
+ 
           {/* Fidelity Score */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-brand-dark-muted uppercase text-[8px] tracking-wider font-semibold">Fidelity Index</span>
+            <span className="text-brand-dark-muted uppercase text-[7px] tracking-wider font-semibold">Fidelity Index</span>
             <span className="text-brand-accent font-bold flex items-center gap-0.5">
               {fidelityScore ? (
                 <>
-                  <Flame className="w-3 h-3 text-brand-accent fill-brand-accent/20" />
+                  <Flame className="w-2.5 h-2.5 text-brand-accent fill-brand-accent/20" />
                   {fidelityScore}/10
                 </>
               ) : (
@@ -131,7 +131,7 @@ export default function TrackDetails({ track, isPlaying, stats, preamp }: TrackD
               )}
             </span>
           </div>
-
+ 
         </div>
 
         {/* AI mastering advice box */}

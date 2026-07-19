@@ -128,7 +128,7 @@ export default function Equalizer({
   };
 
   return (
-    <div id="equalizer_panel" className="bg-brand-card rounded border border-brand-border p-5 md:p-6 flex flex-col gap-6 relative">
+    <div id="equalizer_panel" className="bg-brand-card/40 backdrop-blur-md rounded-xl border border-brand-border/80 p-5 flex flex-col gap-5 relative shadow-[0_8px_32px_rgba(0,0,0,0.4)] h-full">
       
       {/* Equalizer Title & Power / Bypass Toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
